@@ -1,0 +1,160 @@
+---
+version: 2.1
+
+definitions:
+  port-parameter: &port-parameter
+    description: port
+    type: integer
+  localhost-parameter: &localhost-parameter
+    description: host
+    type: string
+    default: localhost
+  wait-for-parameters: &wait-for-parameters
+    description:
+      description: command name
+      type: string
+      default: command
+    timeout:
+      description: timeout
+      type: integer
+      default: 60
+    seconds_between_retries:
+      description: seconds
+      type: integer
+      default: 1
+  wait-for-attributes: &wait-for-attributes
+    seconds_between_retries: <<parameters.seconds_between_retries>>
+    timeout: <<parameters.timeout>>
+    description: <<parameters.description>>
+  wait-for-port-parameters: &wait-for-port-parameters
+      <<: *wait-for-parameters
+      description:
+        description: port description
+        type: string
+        default: port
+      host: *localhost-parameter
+      port: *port-parameter
+  wait-for-port-attributes: &wait-for-port-attributes
+      <<: *wait-for-attributes
+      host: <<parameters.host>>
+      port: <<parameters.port>>
+
+description: Waits for things testable with a sh command
+
+examples:
+  waiting_for_containers:
+    description: Waiting for containers to be ready for start testing
+    usage:
+      version: 2.1
+      orbs:
+        wait-for: cobli/wait-for@x.x.x
+      jobs:
+        build:
+          docker:
+            - image: circleci/openjdk:8
+            - image: cassandra:3.2
+          steps:
+            - checkout
+            - wait-for/cassandra
+            - run:
+                name: Test
+                command: sbt test
+
+commands:
+  sh-command:
+    description: Waits for a shell command to be sucessfully executed
+    parameters:
+      <<: *wait-for-parameters
+      sh_command:
+        description: command to be checked
+        type: string
+        default: "true"
+    steps:
+      - run:
+          name: Wait for <<parameters.description>>
+          command: |
+            timeout <<parameters.timeout>> sh -c \
+              'until <<parameters.sh_command>>; do
+                echo "Waiting for <<parameters.description>> ..."
+                sleep <<parameters.seconds_between_retries>>
+              done'
+
+  port:
+    description: Waits for a port be open
+    parameters: *wait-for-port-parameters
+    steps:
+      - sh-command:
+          <<: *wait-for-attributes
+          sh_command: nc -z <<parameters.host>> <<parameters.port>>
+
+  kafka:
+    description: Waits for Kafka be ready
+    parameters:
+      <<: *wait-for-parameters
+      description:
+        description: kafka description
+        type: string
+        default: Kafka
+      zookeeper_host: *localhost-parameter
+      zookeeper_port:
+        <<: *port-parameter
+        default: 2181
+    steps:
+      - sh-command:
+          <<: *wait-for-attributes
+          sh_command: >-
+            echo dump |
+            nc <<parameters.zookeeper_host>> <<parameters.zookeeper_port>> |
+            grep brokers
+
+  localstack-s3:
+    description: |
+      Waits for a LocalStack container with S3 service be ready
+    parameters:
+      <<: *wait-for-port-parameters
+      description:
+        description: LocalStack S3 description
+        type: string
+        default: Localstack S3
+      port:
+        <<: *port-parameter
+        default: 4572
+    steps:
+      - sh-command:
+          <<: *wait-for-attributes
+          sh_command: >-
+            curl --silent --fail
+            "http://<<parameters.host>>:<<parameters.port>>"
+
+  redis:
+    description: Waits for Redis to be ready
+    parameters:
+      <<: *wait-for-port-parameters
+      description:
+        description: redis description
+        type: string
+        default: Redis
+      port:
+        <<: *port-parameter
+        default: 6379
+    steps:
+      - sh-command:
+          <<: *wait-for-attributes
+          sh_command: >-
+            printf "PING\r\n" |
+            nc -q 1 <<parameters.host>> <<parameters.port>> |
+            grep PONG
+
+  cassandra:
+    description: Waits for Cassandra to be ready
+    parameters:
+      <<: *wait-for-port-parameters
+      description:
+        description: cassandra description
+        type: string
+        default: Cassandra
+      port:
+        <<: *port-parameter
+        default: 9042
+    steps:
+      - port: *wait-for-port-attributes
