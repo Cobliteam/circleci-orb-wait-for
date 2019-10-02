@@ -18,12 +18,12 @@ definitions:
       description: timeout
       type: integer
       default: 60
-    seconds_between_retries:
+    seconds-between-retries:
       description: seconds
       type: integer
       default: 1
   wait-for-attributes: &wait-for-attributes
-    seconds_between_retries: <<parameters.seconds_between_retries>>
+    seconds-between-retries: <<parameters.seconds-between-retries>>
     timeout: <<parameters.timeout>>
     description: <<parameters.description>>
   wait-for-port-parameters: &wait-for-port-parameters
@@ -65,7 +65,7 @@ commands:
     description: Waits for a shell command to be sucessfully executed
     parameters:
       <<: *wait-for-parameters
-      sh_command:
+      sh-command:
         description: command to be checked
         type: string
         default: "true"
@@ -74,9 +74,9 @@ commands:
           name: Wait for <<parameters.description>>
           command: |
             timeout <<parameters.timeout>> sh -c \
-              'until <<parameters.sh_command>>; do
+              'until <<parameters.sh-command>>; do
                 echo "Waiting for <<parameters.description>> ..."
-                sleep <<parameters.seconds_between_retries>>
+                sleep <<parameters.seconds-between-retries>>
               done'
 
   port:
@@ -85,7 +85,7 @@ commands:
     steps:
       - sh-command:
           <<: *wait-for-attributes
-          sh_command: nc -z <<parameters.host>> <<parameters.port>>
+          sh-command: nc -z <<parameters.host>> <<parameters.port>>
 
   kafka:
     description: Waits for Kafka be ready
@@ -95,16 +95,16 @@ commands:
         description: kafka description
         type: string
         default: Kafka
-      zookeeper_host: *localhost-parameter
-      zookeeper_port:
+      zookeeper-host: *localhost-parameter
+      zookeeper-port:
         <<: *port-parameter
         default: 2181
     steps:
       - sh-command:
           <<: *wait-for-attributes
-          sh_command: >-
+          sh-command: >-
             echo dump |
-            nc <<parameters.zookeeper_host>> <<parameters.zookeeper_port>> |
+            nc <<parameters.zookeeper-host>> <<parameters.zookeeper-port>> |
             grep brokers
 
   localstack-s3:
@@ -122,7 +122,7 @@ commands:
     steps:
       - sh-command:
           <<: *wait-for-attributes
-          sh_command: >-
+          sh-command: >-
             curl --silent --fail
             "http://<<parameters.host>>:<<parameters.port>>"
 
@@ -140,7 +140,7 @@ commands:
     steps:
       - sh-command:
           <<: *wait-for-attributes
-          sh_command: >-
+          sh-command: >-
             printf "PING\r\n" |
             nc -q 1 <<parameters.host>> <<parameters.port>> |
             grep PONG
