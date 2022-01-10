@@ -123,8 +123,9 @@ commands:
       - sh-command:
           <<: *wait-for-attributes
           sh-command: >-
-            curl --silent --fail
-            "http://<<parameters.host>>:<<parameters.port>>"
+            curl --silent
+            "http://<<parameters.host>>:<<parameters.port>>" |
+            grep --quiet running
 
   redis:
     description: Waits for Redis to be ready
